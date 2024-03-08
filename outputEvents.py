@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import os.path
 
 from google.auth.transport.requests import Request
@@ -8,7 +8,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 def convertTime(dateTime):
   date, time_utc = dateTime.split("T")
@@ -21,10 +21,53 @@ def convertTime(dateTime):
   return date, time, utc
 
 
+def createEvent(description, day, time, name_to_date, creds):
+  print('hi')
+  date = name_to_date[day]
+  try:
+    # "2024-03-10:00:00-5:00"
+
+    service = build("calendar", "v3", credentials=creds)
+    event = {
+      "summary": description,
+      "start": {
+        "dateTime": "2024-03-09T09:00:00-5:00",
+        "timeZone": "America/New York"
+      },
+      "end": {
+        "dateTime": "2024-03-09T10:00:00-5:00",
+        "timeZone": "America/New York"
+      }
+
+    }
+
+    print(event)
+
+    event = service.events().insert(calendarId="primary", body= event).execute()
+
+  except HttpError as error:
+    print("error!", error)
+
+
+# diff queries: check schedule (overall), check when busy, check when free
+def checkSchedule(type, day, week_calendar):
+  if type == 'all' or type == 'busy':
+    return week_calendar[day]
+  # implement a way to check free time
+
+
+def listEvents(week_calendar):
+  return week_calendar
+
+
+
+
 def main():
   """Shows basic usage of the Google Calendar API.
   Prints the start and name of the next 10 events on the user's calendar.
   """
+  week_calendar = {}
+  name_to_date = {}
   creds = None
   # The file token.json stores the user's access and refresh tokens, and is
   # created automatically when the authorization flow completes for the first
@@ -48,7 +91,8 @@ def main():
     service = build("calendar", "v3", credentials=creds)
 
     # Call the Calendar API
-    now = datetime.datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
+    now = datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
+    #now = datetime.now()
     print("Getting the upcoming 10 events")
     events_result = (
         service.events()
@@ -68,20 +112,49 @@ def main():
       return
 
     # Prints the start and name of the next 10 events
-    f = open("output.txt", "x")
+    # f = open("output.txt", "x")
     for event in events:
-      f.write("Event: " + event["summary"] + " ")
+      # f.write("Event: " + event["summary"] + " ")
+      print(event['summary'])
+
       start = event["start"].get("dateTime", event["start"].get("date"))
       end = event["end"].get("dateTime", event["end"].get('date'))
       startDate, startTime, startUtc = convertTime(start)
-      endDate, endTime, endUtc = convertTime(start)
+      endDate, endTime, endUtc = convertTime(end)
+
+      datetime_str = datetime.strptime(start, '%Y-%m-%dT%H:%M:%S%z')
+      day = datetime_str.strftime('%A')
+      event_obj = {}
+      event_obj["name"] = event['summary']
+      event_obj["startTime"] = startTime
+      event_obj["endTime"] = endTime
+      event_obj["startDate"] = startDate
+      event_obj['endDate'] = endDate
+
+      name_to_date[day] = startDate
+      if day in week_calendar:
+        week_calendar[day].append(event_obj)
+      else:
+        week_calendar[day] = []
+        week_calendar[day].append(event_obj)
+
+
+      #print(event["start"].get("dateTime"))
       #print("event: ", event["start"])
-      f.write("Start Date: " + startDate + " ")
-      f.write("Start Time: " + startTime + " ")
-      f.write("End Date: " + endDate + " ")
-      f.write("End Time: "+ endTime + " ")
+      # f.write("Start Date: " + startDate + " ")
+      # f.write("Start Time: " + startTime + " ")
+      # f.write("End Date: " + endDate + " ")
+      # f.write("End Time: "+ endTime + " ")
       #print(start, end, event["summary"])
       #f.write(start, event["summary"])
+
+    print(week_calendar)
+
+    description = "jog"
+    day = "Saturday"
+    time = "12:00"
+
+    createEvent(description, day, time, name_to_date, creds)
 
   except HttpError as error:
     print(f"An error occurred: {error}")
