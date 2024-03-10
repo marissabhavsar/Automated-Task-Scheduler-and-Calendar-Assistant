@@ -1,2 +1,2 @@
 # EECS545
-Virtual Calendar Assistant
+Automated Task Scheduler and Virtual Calendar Assistant
