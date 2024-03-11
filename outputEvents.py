@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+
 import os.path
 
 from google.auth.transport.requests import Request
@@ -21,22 +22,28 @@ def convertTime(dateTime):
   return date, time, utc
 
 
-def createEvent(description, day, time, name_to_date, creds):
-  print('hi')
-  date = name_to_date[day]
-  try:
-    # "2024-03-10:00:00-5:00"
+def createEvent(description, date, time, duration, creds):
 
+  start_datetime = datetime.strptime(f'{date} {time}', '%Y-%m-%d %I:%M %p')
+  end_datetime = start_datetime + timedelta(hours=duration)
+  start_datetime = start_datetime.isoformat() + 'Z'
+  end_datetime = end_datetime.isoformat() + 'Z'
+  try:
     service = build("calendar", "v3", credentials=creds)
+    calendar = service.calendars().get(calendarId='primary').execute()
+    timezone = calendar.get("timeZone")
+    #print(timezone)
+
     event = {
-      "summary": description,
-      "start": {
-        "dateTime": "2024-03-09T09:00:00-5:00",
-        "timeZone": "America/New York"
+      'summary': description,
+
+      'start': {
+        'dateTime': start_datetime,
+        'timeZone': timezone
       },
-      "end": {
-        "dateTime": "2024-03-09T10:00:00-5:00",
-        "timeZone": "America/New York"
+      'end': {
+        'dateTime': end_datetime,
+        'timeZone': timezone
       }
 
     }
@@ -151,10 +158,11 @@ def main():
     print(week_calendar)
 
     description = "jog"
-    day = "Saturday"
-    time = "12:00"
+    day = "2024-03-12"
+    time = "12:00 PM"
+    duration = 1
 
-    createEvent(description, day, time, name_to_date, creds)
+    createEvent(description, day, time, duration, creds)
 
   except HttpError as error:
     print(f"An error occurred: {error}")
