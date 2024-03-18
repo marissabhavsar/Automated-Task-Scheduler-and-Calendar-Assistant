@@ -66,3 +66,29 @@ createEvent_format = [
         }
     }
 ]
+
+checkSchedule_format = [
+    {
+        "name": "checkSchedule",
+        "description": "Extract entities from the body of the input text to interact with Google Calendar API and check the schedule. The current time for your reference is:"
+        + now.strftime("%Y-%m-%d %H:%M:%S")
+        + ".",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "Whether to check free or busy schedule. Use Free or Busy.",
+                },
+                "start": {
+                    "type": "string",
+                    "description": 'Start date and time to start checking schedule. Use "%Y-%m-%d %H:%M" format.',
+                },
+                "end": {
+                    "type": "string",
+                    "description": 'End date and time at which to stop checking schedule. Use "%Y-%m-%d %H:%M" format.',
+                },
+            },
+        },
+    }
+]
