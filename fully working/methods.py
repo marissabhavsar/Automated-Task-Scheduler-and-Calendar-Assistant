@@ -1,4 +1,5 @@
 from openai import OpenAI
+
 import os
 from datetime import datetime, timedelta
 import json
@@ -52,6 +53,9 @@ def extractCalendar(google_calendar):
 
     return calendar
 
+def get_calendar():
+    return extractCalendar(get_google_calendar_service())
+
 def set_up_ChatGPT(calendar):
     os.environ['OPENAI_API_KEY'] = "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"
     client = OpenAI()
@@ -67,6 +71,7 @@ def set_up_ChatGPT(calendar):
         print(chunk.choices[0].delta.content or "", end="")
 
     return client
+
 
 def moveEvent(event_details):
     event_title = event_details.get('name', '')
