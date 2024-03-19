@@ -1,4 +1,5 @@
 from openai import OpenAI
+
 import os
 from datetime import datetime, timedelta
 import json
@@ -51,6 +52,9 @@ def extractCalendar(google_calendar):
         calendar = calendar + f'{event_details}\n'
 
     return calendar
+
+def get_calendar():
+    return extractCalendar(get_google_calendar_service())
 
 def set_up_ChatGPT(calendar):
     os.environ['OPENAI_API_KEY'] = "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"
