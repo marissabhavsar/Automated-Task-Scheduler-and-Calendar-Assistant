@@ -40,7 +40,7 @@ def extractCalendar(google_calendar):
     now = current_time()
     nextweek = (datetime.now() + timedelta(days=7)).isoformat() + 'Z'
     events_result = service.events().list(calendarId='primary', timeMin=now,
-                                        maxResults=10, singleEvents=True,
+                                        timeMax=nextweek, singleEvents=True,
                                         orderBy='startTime').execute()
     
     events = events_result.get('items', [])
