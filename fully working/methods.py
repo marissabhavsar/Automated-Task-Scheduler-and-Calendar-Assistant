@@ -10,7 +10,7 @@ from google.auth.transport.requests import Request
 import googleapiclient.discovery
 
 def get_google_calendar_service():
-    # Set up the Google Calendar API credentials 
+    # Set up the Google Calendar API credentials
     creds = None
     SCOPES = ['https://www.googleapis.com/auth/calendar']
 
@@ -32,17 +32,17 @@ def get_google_calendar_service():
     service = googleapiclient.discovery.build('calendar', 'v3', credentials=creds)
     return service
 
-def extractCalendar(google_calendar): 
+def extractCalendar(google_calendar):
     service = google_calendar
     now = current_time()
     nextweek = (datetime.now() + timedelta(days=7)).isoformat() + 'Z'
     events_result = service.events().list(calendarId='primary', timeMin=now,
                                         maxResults=10, singleEvents=True,
                                         orderBy='startTime').execute()
-    
+
     events = events_result.get('items', [])
     calendar = ''
-    
+
     for event in events:
         name = event['summary']
         start = event['start'].get('dateTime', event['start'].get('date'))
@@ -66,7 +66,7 @@ def set_up_ChatGPT(calendar):
         messages=[{"role": "user", "content": "Here's my calendar for the week, store it for your reference. Today's date and time is: " + current_time() + '\n' + calendar + "Print the events events you see for today" }],
         stream=True,
     )
-    
+
     for chunk in stream:
         print(chunk.choices[0].delta.content or "", end="")
 
@@ -81,7 +81,7 @@ def moveEvent(event_details):
     new_time = event_details.get('new_time', '')
     service = get_google_calendar_service()
 
-    
+
     if date and time: #Eg: move my meeting on 2021-08-20 at 10:00 to 2021-08-21 at 11:00
         current_datetime = datetime.strptime(f'{date} {time}', '%Y-%m-%d %I:%M %p')
     elif time: #Eg: move my meeting at 10:00 to 11:00
@@ -94,12 +94,12 @@ def moveEvent(event_details):
 
     elif new_time: #if only new time is provided
         new_datetime = current_datetime.replace(hour=int(time.split(':')[0]), minute=int(time.split(':')[1]))
-    else: 
-        print('Please specify the time to move the event to.') 
+    else:
+        print('Please specify the time to move the event to.')
         return
-    
 
-    if not date and not time:  #Eg move my meeting to 11:00 
+
+    if not date and not time:  #Eg move my meeting to 11:00
         now = datetime.utcnow().isoformat() + 'Z'
         events_result = service.events().list(calendarId='primary', timeMin=now, orderBy='startTime', singleEvents=True, q=f'{event_title.lower()}').execute() #matches with mispelled event names or lower case
         events = events_result.get('items', [])
@@ -124,7 +124,7 @@ def moveEvent(event_details):
         else:
             print(f'Event "{event_title}" not found.')
             return
-    
+
     #check if new date and time is available
     if new_datetime < datetime.now():
         print('The new date and time should be in the future.')
@@ -144,9 +144,9 @@ def moveEvent(event_details):
         return
 
     print(event_to_move)
-    start_datetime = datetime.fromisoformat(event_to_move['start']['dateTime'])  
+    start_datetime = datetime.fromisoformat(event_to_move['start']['dateTime'])
     end_datetime = datetime.fromisoformat(event_to_move['end']['dateTime'])
-    event_duration = end_datetime - start_datetime #to make sure duration of event is maintained when moving 
+    event_duration = end_datetime - start_datetime #to make sure duration of event is maintained when moving
     new_datetime_end = new_datetime + event_duration
     event_to_move['start']['dateTime'] = new_datetime.isoformat()
     event_to_move['end']['dateTime'] = new_datetime_end.isoformat()
@@ -164,16 +164,19 @@ def createEvent(entities):
     date = entities.get('date', now.strftime("%Y-%m-%d"))
     time = entities.get('time', '')
     duration = entities.get('duration', 1)
+
     if not time:
         print('Please specify the time of the event.')
         return
-    
+
+
     start_datetime = datetime.strptime(f'{date} {time}', '%Y-%m-%d %I:%M %p')
     print(start_datetime)
-    end_datetime = start_datetime + timedelta(hours=duration)
-    start_datetime = start_datetime.isoformat() 
-    end_datetime = end_datetime.isoformat() 
-    
+
+    end_datetime = start_datetime + timedelta(hours=duration[0])
+    start_datetime = start_datetime.isoformat()
+    end_datetime = end_datetime.isoformat()
+
     service = get_google_calendar_service()
     calendar = service.calendars().get(calendarId='primary').execute()
     timezone = calendar.get("timeZone")
@@ -234,7 +237,7 @@ def checkSchedule(entities):
             # Check if there is a gap between the last busy period and the current one
             if last_end_time < start_time:
                 free_periods.append({'start': last_end_time, 'end': start_time})
-    
+
             last_end_time = max(last_end_time, end_time)
 
         # Check if there is a gap between the last busy period and the end of the specified time range
@@ -249,7 +252,7 @@ def checkSchedule(entities):
             for free_period in free_periods:
                 start_time = free_period['start'].strftime("%I:%M %p")
                 end_time = free_period['end'].strftime("%I:%M %p")
-                print(f"{start_time} to {end_time}")   
+                print(f"{start_time} to {end_time}")
     else:
         # The rest of your code for handling non-Free events
         pass
@@ -267,4 +270,4 @@ checkSchedule(entities)
 def current_time():
     now = datetime.now().isoformat() + 'Z'
     return now
-    
+
