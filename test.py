@@ -1,41 +1,15 @@
 import pandas as pd
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 import openai
 import json
 
-def model(query):
-    # Define the prompt
-    prompt = "Extract intent from the following query meant for a virtual calendar assistant - " + query + ". Your response should be a single word that describes the intent of the query, and should be one of the following: create_event, delete_event, move_event, update_event, add_task, list_events,create_recurring_event, delete_recurring_event, move_recurring_event"
-    
-    # Initialize OpenAI client
-    client = openai.ChatCompletion.create()
-    
-    # Get intent from GPT-3.5
-    stream = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        stream=True,
-    )
-    intent = ''
-    for chunk in stream:
-        intent += chunk.choices[0].delta.content or ""
-    
-    # Execute action based on intent
-    if intent == 'create_event':
-        response = client.chat.completions.create(
-            model='gpt-3.5-turbo',
-            messages=[{'role': 'user', 'content': query}],
-            functions=create_event_format,
-            function_call='auto',
-        )
-        json_response = json.loads(response.choices[0].message.function_call.arguments)
-        entities = dict(json_response)
-        create_event(entities)
-    # Add conditions for other intents and corresponding actions here
-    else:
-        print("Intent not recognized.")
+"""
 
-def evaluate_model():
+"""
+
+import pandas as pd
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+def evaluate_model(model_function):
     # Load test data
     test_data = pd.read_csv("test.csv")
     
@@ -49,7 +23,7 @@ def evaluate_model():
     predicted_entities = []
 
     for query in queries:
-        intent, entities = model(query)  # Assuming model has a predict method
+        intent, entities = model_function(query)
         predicted_intents.append(intent)
         predicted_entities.append(entities)
     
@@ -75,3 +49,5 @@ def evaluate_model():
     print("Entity Precision:", entity_precision)
     print("Entity Recall:", entity_recall)
     print("Entity F1 Score:", entity_f1)
+
+
