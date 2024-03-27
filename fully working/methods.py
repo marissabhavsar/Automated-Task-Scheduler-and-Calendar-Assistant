@@ -8,6 +8,10 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import googleapiclient.discovery
+
+from datetime import datetime, timedelta, timezone
+import pytz  
+
 # from mistralai.client import MistralClient
 # from mistralai.models.chat_completion import ChatMessage
 
@@ -311,22 +315,31 @@ def moveEvent(event_details):
         f'Event "{event_title}" moved to {datetime.fromisoformat(updated_event["start"]["dateTime"])}'
     )
 
-
 def createEvent(description, date, time, duration):
+    print("Create event called")
+
     # Adjust date parsing to match incoming data
     description = description.strip('"')
     date = date.strip('"')
     time = time.strip('"')
+    print("The data and time is ", date, "/", time)
 
     # Adjust the datetime parsing to match the incoming data
-    start_datetime = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
-    end_datetime = start_datetime + timedelta(hours=int(duration))
+    naive_start_datetime = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+    
+    # Assuming input time is in the local timezone
+    local_timezone = pytz.timezone('America/New_York')  
+    local_start_datetime = local_timezone.localize(naive_start_datetime)
+
+    # Convert local time to UTC (Zulu Time)
+    utc_start_datetime = local_start_datetime.astimezone(pytz.utc)
+    utc_end_datetime = utc_start_datetime + timedelta(hours=int(duration))
+
+    print("UTC start time: ", utc_start_datetime, "UTC end time: ", utc_end_datetime)
 
     # Convert the datetime back to RFC3339 format for the Google Calendar API call
-    start_datetime = (
-        start_datetime.isoformat() + "Z"
-    )  # Google calendar requires 'Z' at the end of the string
-    end_datetime = end_datetime.isoformat() + "Z"
+    start_iso = utc_start_datetime.isoformat()
+    end_iso = utc_end_datetime.isoformat()
 
     service = get_google_calendar_service()
     calendar = service.calendars().get(calendarId="primary").execute()
@@ -334,17 +347,14 @@ def createEvent(description, date, time, duration):
 
     event = {
         "summary": description,
-        "start": {"dateTime": start_datetime, "timeZone": timezone},
-        "end": {"dateTime": end_datetime, "timeZone": timezone},
+        "start": {"dateTime": start_iso, "timeZone": "UTC"},  # Set timezone explicitly to UTC
+        "end": {"dateTime": end_iso, "timeZone": "UTC"},      # Set timezone explicitly to UTC
     }
 
     created_event = service.events().insert(calendarId="primary", body=event).execute()
     print(
         f"Event created: {description} on {date} at {time} for duration of {duration} hours."
     )
-
-
-from datetime import datetime, timedelta, timezone
 
 
 def checkSchedule(type, start, end):
