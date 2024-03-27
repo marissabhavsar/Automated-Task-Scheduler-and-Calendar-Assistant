@@ -3,7 +3,9 @@ import openai
 import json
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
+
 def separate_action_and_arguments(input_string):
+    # function separates input string into Intent and Entities
     # Split the input string by the first "(" occurrence
     parts = input_string.split('(', 1)
     
