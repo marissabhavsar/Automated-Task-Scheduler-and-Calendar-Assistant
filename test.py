@@ -1,13 +1,17 @@
 import pandas as pd
 import openai
 import json
-
-"""
-
-"""
-
-import pandas as pd
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+def separate_action_and_arguments(input_string):
+    # Split the input string by the first "(" occurrence
+    parts = input_string.split('(', 1)
+    
+    # Extract the action and arguments
+    intent = parts[0].strip()
+    entities = '(' + parts[1] if len(parts) > 1 else ''
+    
+    return intent, entities
 
 def evaluate_model(model_function):
     # Load test data
