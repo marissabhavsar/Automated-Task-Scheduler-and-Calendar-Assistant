@@ -8,8 +8,8 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import googleapiclient.discovery
-from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
+# from mistralai.client import MistralClient
+# from mistralai.models.chat_completion import ChatMessage
 
 
 def get_google_calendar_service():
@@ -75,6 +75,7 @@ def set_up_ChatGPT(calendar):
 
     return client
 
+'''
 def set_up_MISTRAL(calendar):
     # Assuming current_time() is defined somewhere in your code.
     os.environ['MISTRAL_API_KEY'] = 'FZrH3btKf0XO4soOHwxozkDacRKcVixi'
@@ -99,6 +100,61 @@ def set_up_MISTRAL(calendar):
         print(chunk.choices[0].delta.content or "", end="")
 
     return client
+'''
+
+def move_event(event_details):
+    # Function to move an event in Google Calendar
+    event_title = event_details.get('name', '')
+    date = event_details.get('date', '')
+    time = event_details.get('time', '')
+    new_date = event_details.get('new_date', '')
+    new_time = event_details.get('new_time', '')
+
+    service = get_google_calendar_service()
+
+    try:
+        # Parse current datetime
+        if date and time:
+            current_datetime = datetime.strptime(f'{date} {time}', '%Y-%m-%d %I:%M %p')
+        elif time:
+            current_datetime = datetime.now().replace(hour=int(time.split(':')[0]))
+        elif date:
+            current_datetime = datetime.strptime(date, '%Y-%m-%d').replace(hour=0, minute=0, second=0)
+
+        # Parse new datetime
+        if new_date and new_time:
+            new_datetime = datetime.strptime(f'{new_date} {new_time}', '%Y-%m-%d %I:%M %p')
+        elif new_time:
+            new_datetime = current_datetime.replace(hour=int(new_time.split(':')[0]), minute=int(new_time.split(':')[1]))
+        else:
+            raise ValueError('Please specify the time to move the event to.')
+
+        # Check if new datetime is in the future
+        if new_datetime < datetime.now():
+            raise ValueError('The new date and time should be in the future.')
+
+        # Query events
+        events_result = service.events().list(calendarId='primary', timeMin=current_datetime.isoformat()+'Z', 
+                                              orderBy='startTime', singleEvents=True, q=event_title.lower()).execute()
+        events = events_result.get('items', [])
+
+        if not events:
+            raise ValueError(f'Event "{event_title}" not found.')
+
+        event_to_move = events[0]
+
+        # Move event
+        event_to_move['start']['dateTime'] = new_datetime.isoformat()
+        event_to_move['end']['dateTime'] = (new_datetime + (datetime.fromisoformat(event_to_move['end']['dateTime']) -
+                                                             datetime.fromisoformat(event_to_move['start']['dateTime']))).isoformat()
+
+        updated_event = service.events().update(calendarId='primary', eventId=event_to_move['id'], body=event_to_move).execute()
+
+        print(f'Event "{event_title}" moved to {datetime.fromisoformat(updated_event["start"]["dateTime"])}')
+
+    except Exception as e:
+        print(f'Error: {e}')
+
 
 def moveEvent(event_details):
     event_title = event_details.get('name', '')

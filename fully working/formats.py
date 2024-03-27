@@ -67,7 +67,6 @@ createEvent_format = [
     }
 ]
 
-<<<<<<< HEAD
 checkSchedule_format = [
     {
         "name": "checkSchedule",
@@ -93,11 +92,9 @@ checkSchedule_format = [
         },
     }
 ]
-=======
 def getFormat(string):
     if str(string) == "moveEvent_format":
         return moveEvent_format
     else:
         return moveEvent_format
     
->>>>>>> Langchain
