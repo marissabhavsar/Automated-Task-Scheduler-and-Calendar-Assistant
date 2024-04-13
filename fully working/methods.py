@@ -10,7 +10,7 @@ from google.auth.transport.requests import Request
 import googleapiclient.discovery
 
 from datetime import datetime, timedelta, timezone
-import pytz  
+import pytz
 
 # from mistralai.client import MistralClient
 # from mistralai.models.chat_completion import ChatMessage
@@ -78,6 +78,28 @@ def get_google_calendar_service():
     return service
 
 
+def get_task_service():
+    creds = None
+    SCOPES = ["https://www.googleapis.com/auth/tasks"]
+
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json")
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+            creds = flow.run_local_server(port=0)
+
+        with open("token.json", "w") as token:
+            token.write(creds.to_json())
+
+    # Build and return the Google Calendar API service
+    service = googleapiclient.discovery.build("tasks", "v1", credentials=creds)
+    return service
+
+
 def extractCalendar(google_calendar):
     service = google_calendar
     now = current_time()
@@ -112,26 +134,50 @@ def extractCalendar(google_calendar):
 
     return calendar
 
+def extractTasks(tasks_service):
+    tasks_output = []
+    task_lists = tasks_service.tasklists().list().execute()
+    print(task_lists)
+    for task_list in task_lists['items']:
+        print(task_list['title'])
+        tasks = tasks_service.tasks().list(tasklist=task_list['id']).execute()
+        if 'items' in tasks:
+            for task in tasks['items']:
+                if 'due' in task:
+                    due_date_str = task['due']
+                    current_date_str = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+                    if due_date_str > current_date_str:
+                        description = task['title']
+                        tasks_output.append((description, due_date_str))
+        else:
+            print("No tasks in this list.")
+
+
+    return f"{tasks_output}\n"
 
 def get_calendar():
     return extractCalendar(get_google_calendar_service())
 
+def get_tasks():
+    return extractTasks(get_task_service())
 
-def set_up_ChatGPT(calendar):
+def set_up_ChatGPT(calendar, tasks):
     os.environ["OPENAI_API_KEY"] = "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"
     client = OpenAI()
     client.api_key = "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"
+
 
     stream = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
             {
                 "role": "user",
-                "content": "Here's my calendar for the week, store it for your reference. Today's date and time is: "
+                "content": "Here's my calendar and tasks for the week, store it for your reference. Today's date and time is: "
                 + current_time()
                 + "\n"
-                + calendar
-                + "Print the events you see for today. Use 12HR format for time.",
+                + "calendar: " + calendar + "\n"
+                + "tasks: " + tasks + "\n"
+                + "Print the events and tasks you see for today. Use 12HR format for time.",
             }
         ],
         stream=True,
@@ -200,7 +246,7 @@ def move_event(event_details):
             raise ValueError('The new date and time should be in the future.')
 
         # Query events
-        events_result = service.events().list(calendarId='primary', timeMin=current_datetime.isoformat()+'Z', 
+        events_result = service.events().list(calendarId='primary', timeMin=current_datetime.isoformat()+'Z',
                                               orderBy='startTime', singleEvents=True, q=event_title.lower()).execute()
         events = events_result.get('items', [])
 
@@ -365,9 +411,9 @@ def createEvent(description, date, time, duration):
 
     # Adjust the datetime parsing to match the incoming data
     naive_start_datetime = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
-    
+
     # Assuming input time is in the local timezone
-    local_timezone = pytz.timezone('America/New_York')  
+    local_timezone = pytz.timezone('America/New_York')
     local_start_datetime = local_timezone.localize(naive_start_datetime)
 
     # Convert local time to UTC (Zulu Time)
