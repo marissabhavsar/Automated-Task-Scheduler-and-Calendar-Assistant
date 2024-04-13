@@ -49,12 +49,12 @@ def google_tasks_api():
             task_name = item.get('title', 'No Title')
             task_due_date = item.get('due', None)  # Use None if no due date is provided
             if task_due_date:
-                task_due_date = task_due_date[:10]  # Extract only the date part 
+                task_due_date = task_due_date[:10]  # Extract only the date part
 
             all_tasks.append({'title': task_name, 'due_date': task_due_date})
 
     return all_tasks
-    
+
 def get_google_calendar_service():
     # Set up the Google Calendar API credentials
     creds = None
@@ -177,7 +177,7 @@ def set_up_ChatGPT(calendar, tasks):
                 + "\n"
                 + "calendar: " + calendar + "\n"
                 + "tasks: " + tasks + "\n"
-                + "Print the events and tasks you see for today. Use 12HR format for time.",
+                + "Print the events and tasks you see for the week. Use 12HR format for time.",
             }
         ],
         stream=True,
