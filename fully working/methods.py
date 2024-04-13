@@ -15,7 +15,46 @@ import pytz
 # from mistralai.client import MistralClient
 # from mistralai.models.chat_completion import ChatMessage
 
+def google_tasks_api():
+    creds = None
+    SCOPES = ['https://www.googleapis.com/auth/tasks.readonly']
+    # Check for existing credentials
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
 
+    # If there are no (valid) credentials, perform OAuth flow
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(creds, token)
+
+    service = build('tasks', 'v1', credentials=creds)
+
+    # Call the Tasks API
+    results = service.tasks().list(tasklist='@default').execute()
+    items = results.get('items', [])
+
+    all_tasks = []
+    if not items:
+        print('No tasks found.')
+    else:
+        for item in items:
+            task_name = item.get('title', 'No Title')
+            task_due_date = item.get('due', None)  # Use None if no due date is provided
+            if task_due_date:
+                task_due_date = task_due_date[:10]  # Extract only the date part 
+
+            all_tasks.append({'title': task_name, 'due_date': task_due_date})
+
+    return all_tasks
+    
 def get_google_calendar_service():
     # Set up the Google Calendar API credentials
     creds = None
