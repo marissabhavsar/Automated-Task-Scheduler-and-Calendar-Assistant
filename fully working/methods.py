@@ -12,8 +12,8 @@ import googleapiclient.discovery
 from datetime import datetime, timedelta, timezone
 import pytz
 
-# from mistralai.client import MistralClient
-# from mistralai.models.chat_completion import ChatMessage
+from mistralai.client import MistralClient
+from mistralai.models.chat_completion import ChatMessage
 
 # def google_tasks_api():
 #     creds = None
@@ -205,12 +205,10 @@ def set_up_MISTRAL(calendar):
             + "Print the events you see for today.",
         )
     ]
+    
+    chat_response = client.chat(model='mistral-large-latest',messages=messages)
 
-    # Use the chat_stream method, which now expects ChatMessage objects
-    stream = client.chat_stream(model="open-mistral-7b", messages=messages)
-
-    for chunk in stream:
-        print(chunk.choices[0].delta.content or "", end="")
+    print(chat_response.choices[0].message.content)
 
     return client
 
