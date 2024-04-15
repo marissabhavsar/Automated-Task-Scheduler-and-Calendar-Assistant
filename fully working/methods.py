@@ -15,45 +15,45 @@ import pytz
 # from mistralai.client import MistralClient
 # from mistralai.models.chat_completion import ChatMessage
 
-def google_tasks_api():
-    creds = None
-    SCOPES = ['https://www.googleapis.com/auth/tasks.readonly']
-    # Check for existing credentials
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
-            creds = pickle.load(token)
+# def google_tasks_api():
+#     creds = None
+#     SCOPES = ['https://www.googleapis.com/auth/tasks.readonly']
+#     # Check for existing credentials
+#     if os.path.exists('token.pickle'):
+#         with open('token.pickle', 'rb') as token:
+#             creds = pickle.load(token)
 
-    # If there are no (valid) credentials, perform OAuth flow
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open('token.pickle', 'wb') as token:
-            pickle.dump(creds, token)
+#     # If there are no (valid) credentials, perform OAuth flow
+#     if not creds or not creds.valid:
+#         if creds and creds.expired and creds.refresh_token:
+#             creds.refresh(Request())
+#         else:
+#             flow = InstalledAppFlow.from_client_secrets_file(
+#                 'credentials.json', SCOPES)
+#             creds = flow.run_local_server(port=0)
+#         # Save the credentials for the next run
+#         with open('token.pickle', 'wb') as token:
+#             pickle.dump(creds, token)
 
-    service = build('tasks', 'v1', credentials=creds)
+#     service = build('tasks', 'v1', credentials=creds)
 
-    # Call the Tasks API
-    results = service.tasks().list(tasklist='@default').execute()
-    items = results.get('items', [])
+#     # Call the Tasks API
+#     results = service.tasks().list(tasklist='@default').execute()
+#     items = results.get('items', [])
 
-    all_tasks = []
-    if not items:
-        print('No tasks found.')
-    else:
-        for item in items:
-            task_name = item.get('title', 'No Title')
-            task_due_date = item.get('due', None)  # Use None if no due date is provided
-            if task_due_date:
-                task_due_date = task_due_date[:10]  # Extract only the date part
+#     all_tasks = []
+#     if not items:
+#         print('No tasks found.')
+#     else:
+#         for item in items:
+#             task_name = item.get('title', 'No Title')
+#             task_due_date = item.get('due', None)  # Use None if no due date is provided
+#             if task_due_date:
+#                 task_due_date = task_due_date[:10]  # Extract only the date part
 
-            all_tasks.append({'title': task_name, 'due_date': task_due_date})
+#             all_tasks.append({'title': task_name, 'due_date': task_due_date})
 
-    return all_tasks
+#     return all_tasks
 
 def get_google_calendar_service():
     # Set up the Google Calendar API credentials
@@ -137,9 +137,9 @@ def extractCalendar(google_calendar):
 def extractTasks(tasks_service):
     tasks_output = []
     task_lists = tasks_service.tasklists().list().execute()
-    print(task_lists)
+
     for task_list in task_lists['items']:
-        print(task_list['title'])
+
         tasks = tasks_service.tasks().list(tasklist=task_list['id']).execute()
         if 'items' in tasks:
             for task in tasks['items']:
@@ -214,191 +214,92 @@ def set_up_MISTRAL(calendar):
 
     return client
 
-def move_event(event_details):
-    # Function to move an event in Google Calendar
-    event_title = event_details.get('name', '')
-    date = event_details.get('date', '')
-    time = event_details.get('time', '')
-    new_date = event_details.get('new_date', '')
-    new_time = event_details.get('new_time', '')
+def moveEvent(event_id, new_date, new_time):
 
     service = get_google_calendar_service()
-
     try:
         # Parse current datetime
-        if date and time:
-            current_datetime = datetime.strptime(f'{date} {time}', '%Y-%m-%d %I:%M %p')
-        elif time:
-            current_datetime = datetime.now().replace(hour=int(time.split(':')[0]))
-        elif date:
-            current_datetime = datetime.strptime(date, '%Y-%m-%d').replace(hour=0, minute=0, second=0)
 
-        # Parse new datetime
-        if new_date and new_time:
-            new_datetime = datetime.strptime(f'{new_date} {new_time}', '%Y-%m-%d %I:%M %p')
-        elif new_time:
-            new_datetime = current_datetime.replace(hour=int(new_time.split(':')[0]), minute=int(new_time.split(':')[1]))
-        else:
-            raise ValueError('Please specify the time to move the event to.')
+        # if new_date and new_time:
+        #     current_datetime = datetime.strptime(f'{new_date} {new_time}', '%Y-%m-%d %I:%M %p')
+        # elif new_time:
+        #     current_datetime = datetime.now().replace(hour=int(new_time.split(':')[0]))
+        # elif new_date:
+        #     current_datetime = datetime.strptime(new_date, '%Y-%m-%d').replace(hour=0, minute=0, second=0)
 
         # Check if new datetime is in the future
-        if new_datetime < datetime.now():
-            raise ValueError('The new date and time should be in the future.')
+        # if new_datetime < datetime.now():
+        #     raise ValueError('The new date and time should be in the future.')
 
-        # Query events
-        events_result = service.events().list(calendarId='primary', timeMin=current_datetime.isoformat()+'Z',
-                                              orderBy='startTime', singleEvents=True, q=event_title.lower()).execute()
-        events = events_result.get('items', [])
+        # Retrieve event from Google Calendar
 
-        if not events:
-            raise ValueError(f'Event "{event_title}" not found.')
+        # Retrieve event from Google Calendar
 
-        event_to_move = events[0]
+        event_id = event_id.strip('"')
+        new_date = new_date.strip('"')
+        new_time = new_time.strip('"')
+        event_id = event_id.strip("'")
+        new_date = new_date.strip("'")
+        new_time = new_time.strip("'")
 
-        # Move event
-        event_to_move['start']['dateTime'] = new_datetime.isoformat()
-        event_to_move['end']['dateTime'] = (new_datetime + (datetime.fromisoformat(event_to_move['end']['dateTime']) -
-                                                             datetime.fromisoformat(event_to_move['start']['dateTime']))).isoformat()
 
-        updated_event = service.events().update(calendarId='primary', eventId=event_to_move['id'], body=event_to_move).execute()
+        event = service.events().get(calendarId='primary', eventId=event_id).execute()
 
-        print(f'Event "{event_title}" moved to {datetime.fromisoformat(updated_event["start"]["dateTime"])}')
+        # Adjust the datetime parsing to match the incoming data
+        naive_start_datetime = datetime.strptime(f"{new_date} {new_time}", "%Y-%m-%d %H:%M")
 
+        # Assuming input time is in the local timezone
+        local_timezone = pytz.timezone('America/New_York')
+        local_start_datetime = local_timezone.localize(naive_start_datetime)
+
+        # Convert local time to UTC (Zulu Time)
+        utc_start_datetime = local_start_datetime.astimezone(pytz.utc)
+        duration = (datetime.strptime(event['end']['dateTime'], "%Y-%m-%dT%H:%M:%S%z") -
+                                                    datetime.strptime(event['start']['dateTime'], "%Y-%m-%dT%H:%M:%S%z"))
+
+        print('duration: ', duration)
+        utc_end_datetime = utc_start_datetime + duration
+
+        print("UTC start time: ", utc_start_datetime, "UTC end time: ", utc_end_datetime)
+
+        # Convert the datetime back to RFC3339 format for the Google Calendar API call
+        start_iso = utc_start_datetime.isoformat()
+        end_iso = utc_end_datetime.isoformat()
+
+
+       # Parse new datetime
+        # new_datetime = datetime.strptime(new_date + " " + new_time, "%Y-%m-%d %H:%M")
+
+        # # Get timezone
+        # print('new datetime reg: ', new_datetime)
+        # print('event timezone: ', event['start']['timeZone'])
+        # event_timezone = pytz.timezone(event['start']['timeZone'])
+        # print('timezone: ', event_timezone)
+
+        # # Convert new datetime to event timezone
+        # new_datetime = event_timezone.localize(new_datetime)
+        # new_datetime_utc = new_datetime.astimezone(pytz.utc)
+        # print('new datetime utc: ', new_datetime_utc)
+        # # Update event start and end time
+        # duration = (datetime.strptime(event['end']['dateTime'], "%Y-%m-%dT%H:%M:%S%z") -
+        #                                             datetime.strptime(event['start']['dateTime'], "%Y-%m-%dT%H:%M:%S%z"))
+
+        # event['start']['dateTime'] = new_datetime_utc.isoformat()
+        # event['end']['dateTime'] = (new_datetime_utc + duration).isoformat()
+
+        event['start']['dateTime'] = start_iso
+        event['end']['dateTime'] = end_iso
+
+
+        # Update event in Google Calendar
+        updated_event = service.events().update(calendarId='primary', eventId=event_id, body=event).execute()
+        #print('Event updated: %s' % updated_event.get('htmlLink'))
+
+        print(f'Event "{event}" moved to {datetime.fromisoformat(updated_event["start"]["dateTime"])}')
     except Exception as e:
         print(f'Error: {e}')
 
 
-
-def moveEvent(event_details):
-    event_title = event_details.get("name", "")
-    date = event_details.get("date", "")
-    time = event_details.get("time", "")
-    new_date = event_details.get("new_date", "")
-    new_time = event_details.get("new_time", "")
-    service = get_google_calendar_service()
-
-    if (
-        date and time
-    ):  # Eg: move my meeting on 2021-08-20 at 10:00 to 2021-08-21 at 11:00
-        current_datetime = datetime.strptime(f"{date} {time}", "%Y-%m-%d %I:%M %p")
-    elif time:  # Eg: move my meeting at 10:00 to 11:00
-        current_datetime = datetime.now().replace(hour=int(time.split(":")[0]))
-    elif date:  # Eg: move my meeting on 2021-08-20 to 2021-08-21 at 11:00
-        current_datetime = datetime.strptime(date, "%Y-%m-%d").replace(
-            hour=0, minute=0, second=0
-        )
-
-    if new_date and new_time:  # if both new date and time are provided
-        new_datetime = datetime.strptime(f"{new_date} {new_time}", "%Y-%m-%d %I:%M %p")
-
-    elif new_time:  # if only new time is provided
-        new_datetime = current_datetime.replace(
-            hour=int(time.split(":")[0]), minute=int(time.split(":")[1])
-        )
-    else:
-        print("Please specify the time to move the event to.")
-        return
-
-    if not date and not time:  # Eg move my meeting to 11:00
-        now = datetime.utcnow().isoformat() + "Z"
-        events_result = (
-            service.events()
-            .list(
-                calendarId="primary",
-                timeMin=now,
-                orderBy="startTime",
-                singleEvents=True,
-                q=f"{event_title.lower()}",
-            )
-            .execute()
-        )  # matches with mispelled event names or lower case
-        events = events_result.get("items", [])
-        if events:
-            event_to_move = events[0]
-        else:
-            print(f'Event "{event_title}" not found.')
-            return
-    elif not event_title and not date:  # Eg: move my 2pm to monday 11am
-        events_result = (
-            service.events()
-            .list(
-                calendarId="primary",
-                timeMin=current_datetime.isoformat() + "Z",
-                timeMax=(current_datetime + timedelta(hours=1)).isoformat() + "Z",
-                orderBy="startTime",
-                singleEvents=True,
-            )
-            .execute()
-        )
-        events = events_result.get("items", [])
-        if events:
-            event_to_move = events[0]
-        else:
-            print(f"Event not found.")
-            return
-    else:  # Eg: move my meeting on 2021-08-20 at 10:00 to 2021-08-21 at 11:00
-        events_result = (
-            service.events()
-            .list(
-                calendarId="primary",
-                timeMin=current_datetime.isoformat() + "Z",
-                orderBy="startTime",
-                singleEvents=True,
-                q=f"{event_title.lower()}",
-            )
-            .execute()
-        )  # matches with mispelled event names or lower case
-        events = events_result.get("items", [])
-        if events:
-            event_to_move = events[0]
-        else:
-            print(f'Event "{event_title}" not found.')
-            return
-
-    # check if new date and time is available
-    if new_datetime < datetime.now():
-        print("The new date and time should be in the future.")
-        return
-    time_min = new_datetime.isoformat() + "Z"
-    time_max = (new_datetime + timedelta(hours=1)).isoformat() + "Z"
-
-    check_availability = (
-        service.freebusy()
-        .query(
-            body={
-                "timeMin": time_min,
-                "timeMax": time_max,
-                "items": [{"id": "primary"}],
-            }
-        )
-        .execute()
-    )
-    if check_availability["calendars"]["primary"]["busy"]:
-        print(
-            f"The new date and time is not available. Please choose another date and time."
-        )
-        return
-
-    print(event_to_move)
-    start_datetime = datetime.fromisoformat(event_to_move["start"]["dateTime"])
-    end_datetime = datetime.fromisoformat(event_to_move["end"]["dateTime"])
-    event_duration = (
-        end_datetime - start_datetime
-    )  # to make sure duration of event is maintained when moving
-    new_datetime_end = new_datetime + event_duration
-    event_to_move["start"]["dateTime"] = new_datetime.isoformat()
-    event_to_move["end"]["dateTime"] = new_datetime_end.isoformat()
-
-    # Update the event
-    updated_event = (
-        service.events()
-        .update(calendarId="primary", eventId=event_to_move["id"], body=event_to_move)
-        .execute()
-    )
-
-    print(
-        f'Event "{event_title}" moved to {datetime.fromisoformat(updated_event["start"]["dateTime"])}'
-    )
 
 def createEvent(description, date, time, duration):
     print("Create event called")
@@ -440,6 +341,47 @@ def createEvent(description, date, time, duration):
     print(
         f"Event created: {description} on {date} at {time} for duration of {duration} hours."
     )
+
+
+def updateEvent(event_id, new_description, new_duration, new_location):
+    service = get_google_calendar_service()
+
+    try:
+        event_id = event_id.strip('"')
+        event_id = event_id.strip("'")
+
+        event = service.events().get(calendarId='primary', eventId=event_id).execute()
+        print(event_id)
+        if new_description:
+            event['description'] = new_description
+
+        # if new_duration:
+        #     print(new_duration)
+        #     event['end']['dateTime'] = event['start']['dateTime'] + timedelta(hours=int(new_duration))
+
+        if new_location:
+            event['location'] = new_location
+        #print('event: ', event)
+        updated_event = service.events().update(calendarId='primary', eventId=event_id, body=event).execute()
+        #print('created event: ', updated_event)
+    except Exception as e:
+        print(f'Error: {e}')
+
+
+def deleteEvent(event_id):
+    service = get_google_calendar_service()
+
+    event_id = event_id.strip("'")
+    event_id = event_id.strip('"')
+
+    try:
+        service.events().delete(calendarId='primary', eventId=event_id).execute()
+    except Exception as e:
+        print(f'Error: {e}')
+
+
+
+
 
 
 def checkSchedule(type, start, end):
