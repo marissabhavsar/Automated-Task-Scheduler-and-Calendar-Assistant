@@ -15,50 +15,16 @@ import pytz
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
 
-# def google_tasks_api():
-#     creds = None
-#     SCOPES = ['https://www.googleapis.com/auth/tasks.readonly']
-#     # Check for existing credentials
-#     if os.path.exists('token.pickle'):
-#         with open('token.pickle', 'rb') as token:
-#             creds = pickle.load(token)
 
-#     # If there are no (valid) credentials, perform OAuth flow
-#     if not creds or not creds.valid:
-#         if creds and creds.expired and creds.refresh_token:
-#             creds.refresh(Request())
-#         else:
-#             flow = InstalledAppFlow.from_client_secrets_file(
-#                 'credentials.json', SCOPES)
-#             creds = flow.run_local_server(port=0)
-#         # Save the credentials for the next run
-#         with open('token.pickle', 'wb') as token:
-#             pickle.dump(creds, token)
+SCOPES = [
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/tasks",
+]
 
-#     service = build('tasks', 'v1', credentials=creds)
-
-#     # Call the Tasks API
-#     results = service.tasks().list(tasklist='@default').execute()
-#     items = results.get('items', [])
-
-#     all_tasks = []
-#     if not items:
-#         print('No tasks found.')
-#     else:
-#         for item in items:
-#             task_name = item.get('title', 'No Title')
-#             task_due_date = item.get('due', None)  # Use None if no due date is provided
-#             if task_due_date:
-#                 task_due_date = task_due_date[:10]  # Extract only the date part
-
-#             all_tasks.append({'title': task_name, 'due_date': task_due_date})
-
-#     return all_tasks
 
 def get_google_calendar_service():
     # Set up the Google Calendar API credentials
     creds = None
-    SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
     if os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json")
@@ -80,7 +46,6 @@ def get_google_calendar_service():
 
 def get_task_service():
     creds = None
-    SCOPES = ["https://www.googleapis.com/auth/tasks"]
 
     if os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json")
@@ -134,50 +99,55 @@ def extractCalendar(google_calendar):
 
     return calendar
 
+
 def extractTasks(tasks_service):
-    tasks_output = []
-    task_lists = tasks_service.tasklists().list().execute()
+    service = tasks_service
+    results = service.tasks().list(tasklist="@default").execute()
+    items = results.get("items", [])
 
-    for task_list in task_lists['items']:
+    all_tasks = ""
+    if not items:
+        print("No tasks found.")
+    else:
+        for item in items:
+            task_name = item.get("title", "No Title")
+            task_due_date = item.get("due", None)  # Use None if no due date is provided
+            if task_due_date:
+                task_due_date = task_due_date[:10]  # Extract only the date part
+            task = {"title": task_name, "due_date": task_due_date}
+            all_tasks = all_tasks + f"{task}\n"
 
-        tasks = tasks_service.tasks().list(tasklist=task_list['id']).execute()
-        if 'items' in tasks:
-            for task in tasks['items']:
-                if 'due' in task:
-                    due_date_str = task['due']
-                    current_date_str = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-                    if due_date_str > current_date_str:
-                        description = task['title']
-                        tasks_output.append((description, due_date_str))
-        else:
-            print("No tasks in this list.")
+    return all_tasks
 
-
-    return f"{tasks_output}\n"
 
 def get_calendar():
     return extractCalendar(get_google_calendar_service())
 
+
 def get_tasks():
     return extractTasks(get_task_service())
+
 
 def set_up_ChatGPT(calendar, tasks):
     os.environ["OPENAI_API_KEY"] = "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"
     client = OpenAI()
     client.api_key = "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"
 
-
     stream = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
             {
                 "role": "user",
-                "content": "Here's my calendar and tasks for the week, store it for your reference. Today's date and time is: "
+                "content": "Here's my calendar and To-Do list for the week, store it for your reference. Today's date and time is: "
                 + current_time()
                 + "\n"
-                + "calendar: " + calendar + "\n"
-                + "tasks: " + tasks + "\n"
-                + "Print the events and tasks you see for the week. Use 12HR format for time.",
+                + "calendar: "
+                + calendar
+                + "\n"
+                + "To-Do list: "
+                + tasks
+                + "\n"
+                + "Print the to-do list for the week and the events you see for today. Use 12HR format for time.",
             }
         ],
         stream=True,
@@ -188,7 +158,8 @@ def set_up_ChatGPT(calendar, tasks):
 
     return client
 
-def set_up_MISTRAL(calendar):
+
+def set_up_MISTRAL(calendar, tasks):
     # Assuming current_time() is defined somewhere in your code.
     os.environ["MISTRAL_API_KEY"] = "FZrH3btKf0XO4soOHwxozkDacRKcVixi"
     api_key = os.environ["MISTRAL_API_KEY"]
@@ -202,15 +173,20 @@ def set_up_MISTRAL(calendar):
             + current_time()
             + "\n"
             + calendar
-            + "Print the events you see for today.",
+            + "\n"
+            + "To-Do list: "
+            + tasks
+            + "\n"
+            + "Print the to-do list and the events you see for today. Use 12HR format for time.",
         )
     ]
-    
-    chat_response = client.chat(model='mistral-large-latest',messages=messages)
+
+    chat_response = client.chat(model="mistral-large-latest", messages=messages)
 
     print(chat_response.choices[0].message.content)
 
     return client
+
 
 def moveEvent(event_id, new_date, new_time):
 
@@ -240,32 +216,35 @@ def moveEvent(event_id, new_date, new_time):
         new_date = new_date.strip("'")
         new_time = new_time.strip("'")
 
-
-        event = service.events().get(calendarId='primary', eventId=event_id).execute()
+        event = service.events().get(calendarId="primary", eventId=event_id).execute()
 
         # Adjust the datetime parsing to match the incoming data
-        naive_start_datetime = datetime.strptime(f"{new_date} {new_time}", "%Y-%m-%d %H:%M")
+        naive_start_datetime = datetime.strptime(
+            f"{new_date} {new_time}", "%Y-%m-%d %H:%M"
+        )
 
         # Assuming input time is in the local timezone
-        local_timezone = pytz.timezone('America/New_York')
+        local_timezone = pytz.timezone("America/New_York")
         local_start_datetime = local_timezone.localize(naive_start_datetime)
 
         # Convert local time to UTC (Zulu Time)
         utc_start_datetime = local_start_datetime.astimezone(pytz.utc)
-        duration = (datetime.strptime(event['end']['dateTime'], "%Y-%m-%dT%H:%M:%S%z") -
-                                                    datetime.strptime(event['start']['dateTime'], "%Y-%m-%dT%H:%M:%S%z"))
+        duration = datetime.strptime(
+            event["end"]["dateTime"], "%Y-%m-%dT%H:%M:%S%z"
+        ) - datetime.strptime(event["start"]["dateTime"], "%Y-%m-%dT%H:%M:%S%z")
 
-        print('duration: ', duration)
+        print("duration: ", duration)
         utc_end_datetime = utc_start_datetime + duration
 
-        print("UTC start time: ", utc_start_datetime, "UTC end time: ", utc_end_datetime)
+        print(
+            "UTC start time: ", utc_start_datetime, "UTC end time: ", utc_end_datetime
+        )
 
         # Convert the datetime back to RFC3339 format for the Google Calendar API call
         start_iso = utc_start_datetime.isoformat()
         end_iso = utc_end_datetime.isoformat()
 
-
-       # Parse new datetime
+        # Parse new datetime
         # new_datetime = datetime.strptime(new_date + " " + new_time, "%Y-%m-%d %H:%M")
 
         # # Get timezone
@@ -285,41 +264,41 @@ def moveEvent(event_id, new_date, new_time):
         # event['start']['dateTime'] = new_datetime_utc.isoformat()
         # event['end']['dateTime'] = (new_datetime_utc + duration).isoformat()
 
-        event['start']['dateTime'] = start_iso
-        event['end']['dateTime'] = end_iso
-
+        event["start"]["dateTime"] = start_iso
+        event["end"]["dateTime"] = end_iso
 
         # Update event in Google Calendar
-        updated_event = service.events().update(calendarId='primary', eventId=event_id, body=event).execute()
-        #print('Event updated: %s' % updated_event.get('htmlLink'))
+        updated_event = (
+            service.events()
+            .update(calendarId="primary", eventId=event_id, body=event)
+            .execute()
+        )
+        # print('Event updated: %s' % updated_event.get('htmlLink'))
 
-        print(f'Event "{event}" moved to {datetime.fromisoformat(updated_event["start"]["dateTime"])}')
+        print(
+            f'Event "{event}" moved to {datetime.fromisoformat(updated_event["start"]["dateTime"])}'
+        )
     except Exception as e:
-        print(f'Error: {e}')
-
+        print(f"Error: {e}")
 
 
 def createEvent(description, date, time, duration):
-    print("Create event called")
 
     # Adjust date parsing to match incoming data
     description = description.strip('"')
     date = date.strip('"')
     time = time.strip('"')
-    print("The data and time is ", date, "/", time)
 
     # Adjust the datetime parsing to match the incoming data
     naive_start_datetime = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
 
     # Assuming input time is in the local timezone
-    local_timezone = pytz.timezone('America/New_York')
+    local_timezone = pytz.timezone("America/New_York")
     local_start_datetime = local_timezone.localize(naive_start_datetime)
 
     # Convert local time to UTC (Zulu Time)
     utc_start_datetime = local_start_datetime.astimezone(pytz.utc)
     utc_end_datetime = utc_start_datetime + timedelta(hours=int(duration))
-
-    print("UTC start time: ", utc_start_datetime, "UTC end time: ", utc_end_datetime)
 
     # Convert the datetime back to RFC3339 format for the Google Calendar API call
     start_iso = utc_start_datetime.isoformat()
@@ -331,8 +310,14 @@ def createEvent(description, date, time, duration):
 
     event = {
         "summary": description,
-        "start": {"dateTime": start_iso, "timeZone": "UTC"},  # Set timezone explicitly to UTC
-        "end": {"dateTime": end_iso, "timeZone": "UTC"},      # Set timezone explicitly to UTC
+        "start": {
+            "dateTime": start_iso,
+            "timeZone": "UTC",
+        },  # Set timezone explicitly to UTC
+        "end": {
+            "dateTime": end_iso,
+            "timeZone": "UTC",
+        },  # Set timezone explicitly to UTC
     }
 
     created_event = service.events().insert(calendarId="primary", body=event).execute()
@@ -348,22 +333,26 @@ def updateEvent(event_id, new_description, new_duration, new_location):
         event_id = event_id.strip('"')
         event_id = event_id.strip("'")
 
-        event = service.events().get(calendarId='primary', eventId=event_id).execute()
+        event = service.events().get(calendarId="primary", eventId=event_id).execute()
         print(event_id)
         if new_description:
-            event['description'] = new_description
+            event["description"] = new_description
 
         # if new_duration:
         #     print(new_duration)
         #     event['end']['dateTime'] = event['start']['dateTime'] + timedelta(hours=int(new_duration))
 
         if new_location:
-            event['location'] = new_location
-        #print('event: ', event)
-        updated_event = service.events().update(calendarId='primary', eventId=event_id, body=event).execute()
-        #print('created event: ', updated_event)
+            event["location"] = new_location
+        # print('event: ', event)
+        updated_event = (
+            service.events()
+            .update(calendarId="primary", eventId=event_id, body=event)
+            .execute()
+        )
+        # print('created event: ', updated_event)
     except Exception as e:
-        print(f'Error: {e}')
+        print(f"Error: {e}")
 
 
 def deleteEvent(event_id):
@@ -373,13 +362,9 @@ def deleteEvent(event_id):
     event_id = event_id.strip('"')
 
     try:
-        service.events().delete(calendarId='primary', eventId=event_id).execute()
+        service.events().delete(calendarId="primary", eventId=event_id).execute()
     except Exception as e:
-        print(f'Error: {e}')
-
-
-
-
+        print(f"Error: {e}")
 
 
 def checkSchedule(type, start, end):
@@ -439,17 +424,6 @@ def checkSchedule(type, start, end):
     else:
         # The rest of your code for handling non-Free events
         pass
-
-
-"""
-# Assuming get_google_calendar_service is defined somewhere in your code
-entities = {
-    "type": "Free",
-    "start": "2024-03-13 00:00",
-    "end": "2024-03-14 00:00",
-}
-checkSchedule(entities)
-"""
 
 
 def current_time():
