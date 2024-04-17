@@ -212,39 +212,33 @@ def moveEvent(event_id, new_date, new_time):
         event_id = event_id.strip('"')
         new_date = new_date.strip('"')
         new_time = new_time.strip('"')
-        event_id = event_id.strip("'")
-        new_date = new_date.strip("'")
-        new_time = new_time.strip("'")
 
-        event = service.events().get(calendarId="primary", eventId=event_id).execute()
+
+        event = service.events().get(calendarId='primary', eventId=event_id).execute()
 
         # Adjust the datetime parsing to match the incoming data
-        naive_start_datetime = datetime.strptime(
-            f"{new_date} {new_time}", "%Y-%m-%d %H:%M"
-        )
+        naive_start_datetime = datetime.strptime(f"{new_date} {new_time}", "%Y-%m-%d %H:%M")
 
         # Assuming input time is in the local timezone
-        local_timezone = pytz.timezone("America/New_York")
+        local_timezone = pytz.timezone('America/New_York')
         local_start_datetime = local_timezone.localize(naive_start_datetime)
 
         # Convert local time to UTC (Zulu Time)
         utc_start_datetime = local_start_datetime.astimezone(pytz.utc)
-        duration = datetime.strptime(
-            event["end"]["dateTime"], "%Y-%m-%dT%H:%M:%S%z"
-        ) - datetime.strptime(event["start"]["dateTime"], "%Y-%m-%dT%H:%M:%S%z")
+        duration = (datetime.strptime(event['end']['dateTime'], "%Y-%m-%dT%H:%M:%S%z") -
+                                                    datetime.strptime(event['start']['dateTime'], "%Y-%m-%dT%H:%M:%S%z"))
 
-        print("duration: ", duration)
+        print('duration: ', duration)
         utc_end_datetime = utc_start_datetime + duration
 
-        print(
-            "UTC start time: ", utc_start_datetime, "UTC end time: ", utc_end_datetime
-        )
+        print("UTC start time: ", utc_start_datetime, "UTC end time: ", utc_end_datetime)
 
         # Convert the datetime back to RFC3339 format for the Google Calendar API call
         start_iso = utc_start_datetime.isoformat()
         end_iso = utc_end_datetime.isoformat()
 
-        # Parse new datetime
+
+       # Parse new datetime
         # new_datetime = datetime.strptime(new_date + " " + new_time, "%Y-%m-%d %H:%M")
 
         # # Get timezone
@@ -264,41 +258,43 @@ def moveEvent(event_id, new_date, new_time):
         # event['start']['dateTime'] = new_datetime_utc.isoformat()
         # event['end']['dateTime'] = (new_datetime_utc + duration).isoformat()
 
-        event["start"]["dateTime"] = start_iso
-        event["end"]["dateTime"] = end_iso
+        event['start']['dateTime'] = start_iso
+        event['end']['dateTime'] = end_iso
+
 
         # Update event in Google Calendar
-        updated_event = (
-            service.events()
-            .update(calendarId="primary", eventId=event_id, body=event)
-            .execute()
-        )
-        # print('Event updated: %s' % updated_event.get('htmlLink'))
+        updated_event = service.events().update(calendarId='primary', eventId=event_id, body=event).execute()
+        #print('Event updated: %s' % updated_event.get('htmlLink'))
 
-        print(
-            f'Event "{event}" moved to {datetime.fromisoformat(updated_event["start"]["dateTime"])}'
-        )
+        print(f'Event "{event}" moved to {datetime.fromisoformat(updated_event["start"]["dateTime"])}')
     except Exception as e:
-        print(f"Error: {e}")
+        print(f'Error: {e}')
+
 
 
 def createEvent(description, date, time, duration):
+    print("Create event called")
 
     # Adjust date parsing to match incoming data
     description = description.strip('"')
     date = date.strip('"')
     time = time.strip('"')
+    print("The data and time is ", date, "/", time)
 
     # Adjust the datetime parsing to match the incoming data
     naive_start_datetime = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
 
     # Assuming input time is in the local timezone
-    local_timezone = pytz.timezone("America/New_York")
+    local_timezone = pytz.timezone('America/New_York')
     local_start_datetime = local_timezone.localize(naive_start_datetime)
 
     # Convert local time to UTC (Zulu Time)
     utc_start_datetime = local_start_datetime.astimezone(pytz.utc)
-    utc_end_datetime = utc_start_datetime + timedelta(hours=int(duration))
+    hours, minutes = map(int, duration.split(':'))
+    duration_minutes = hours * 60 + minutes
+    utc_end_datetime = utc_start_datetime + timedelta(minutes=int(duration_minutes))
+
+    print("UTC start time: ", utc_start_datetime, "UTC end time: ", utc_end_datetime)
 
     # Convert the datetime back to RFC3339 format for the Google Calendar API call
     start_iso = utc_start_datetime.isoformat()
@@ -310,14 +306,8 @@ def createEvent(description, date, time, duration):
 
     event = {
         "summary": description,
-        "start": {
-            "dateTime": start_iso,
-            "timeZone": "UTC",
-        },  # Set timezone explicitly to UTC
-        "end": {
-            "dateTime": end_iso,
-            "timeZone": "UTC",
-        },  # Set timezone explicitly to UTC
+        "start": {"dateTime": start_iso, "timeZone": "UTC"},  # Set timezone explicitly to UTC
+        "end": {"dateTime": end_iso, "timeZone": "UTC"},      # Set timezone explicitly to UTC
     }
 
     created_event = service.events().insert(calendarId="primary", body=event).execute()
@@ -331,41 +321,202 @@ def updateEvent(event_id, new_description, new_duration, new_location):
 
     try:
         event_id = event_id.strip('"')
-        event_id = event_id.strip("'")
 
-        event = service.events().get(calendarId="primary", eventId=event_id).execute()
+
+        event = service.events().get(calendarId='primary', eventId=event_id).execute()
         print(event_id)
-        if new_description:
-            event["description"] = new_description
+        if new_description != '' or new_description != "":
+            event['description'] = new_description
 
-        # if new_duration:
-        #     print(new_duration)
-        #     event['end']['dateTime'] = event['start']['dateTime'] + timedelta(hours=int(new_duration))
+        if new_duration:
+            hours, minutes = map(int, new_duration.split(':'))
+            new_duration_minutes = hours * 60 + minutes
+            # Get the current start time of the event
+            start_time = datetime.fromisoformat(event['start'].get('dateTime'))
 
-        if new_location:
-            event["location"] = new_location
-        # print('event: ', event)
-        updated_event = (
-            service.events()
-            .update(calendarId="primary", eventId=event_id, body=event)
-            .execute()
-        )
-        # print('created event: ', updated_event)
+            # Calculate the new end time based on the start time and new duration
+            new_end_time = start_time + timedelta(minutes=new_duration_minutes)
+
+            # Update the event's end time
+            event['end'] = {'dateTime': new_end_time.isoformat(), 'timeZone': 'UTC'}
+
+        if new_location != '' or new_location != "":
+            event['location'] = new_location
+
+        updated_event = service.events().update(calendarId='primary', eventId=event_id, body=event).execute()
+        print("updated event: ", updated_event)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f'Error: {e}')
 
 
 def deleteEvent(event_id):
     service = get_google_calendar_service()
 
-    event_id = event_id.strip("'")
     event_id = event_id.strip('"')
 
     try:
-        service.events().delete(calendarId="primary", eventId=event_id).execute()
+        service.events().delete(calendarId='primary', eventId=event_id).execute()
     except Exception as e:
-        print(f"Error: {e}")
+        print(f'Error: {e}')
 
+
+def createRecurringEvent(description, date, time, duration, frequency, until):
+    print("Create recurring event called")
+
+    # Adjust date parsing to match incoming data
+    description = description.strip('"')
+    date = date.strip('"')
+    time = time.strip('"')
+    frequency = frequency.strip('"')
+    duration = duration.strip('"')
+    until = until.strip('"')
+    if '-' in until:
+        until = until.replace('-','')
+
+
+    # Adjust the datetime parsing to match the incoming data
+    naive_start_datetime = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+
+    # Assuming input time is in the local timezone
+    local_timezone = pytz.timezone('America/New_York')
+    local_start_datetime = local_timezone.localize(naive_start_datetime)
+
+    # Convert local time to UTC (Zulu Time)
+    utc_start_datetime = local_start_datetime.astimezone(pytz.utc)
+    hours, minutes = map(int, duration.split(':'))
+    duration_minutes = hours * 60 + minutes
+    utc_end_datetime = utc_start_datetime + timedelta(minutes=int(duration_minutes))
+
+
+    # Convert the datetime back to RFC3339 format for the Google Calendar API call
+    start_iso = utc_start_datetime.isoformat()
+    end_iso = utc_end_datetime.isoformat()
+
+    service = get_google_calendar_service()
+    calendar = service.calendars().get(calendarId="primary").execute()
+    timezone = calendar.get("timeZone")
+
+    event = {
+        "summary": description,
+        "start": {"dateTime": start_iso, "timeZone": "UTC"},  # Set timezone explicitly to UTC
+        "end": {"dateTime": end_iso, "timeZone": "UTC"},      # Set timezone explicitly to UTC
+        "recurrence": [
+            f"RRULE:FREQ={frequency};UNTIL={until}",
+        ]
+    }
+
+    created_event = service.events().insert(calendarId="primary", body=event).execute()
+    print(
+        f"Event created: {description} on {date} at {time} for duration of {duration} hours {frequency} until {until}."
+    )
+
+
+def deleteRecurringEvent(event_id):
+    service = get_google_calendar_service()
+    event_id = event_id.strip('"')
+    recurring_id = event_id
+    if '_' in event_id:
+        recurring_id, id = event_id.split('_')
+
+    try:
+        event = service.events().get(calendarId='primary', eventId=recurring_id).execute()
+        print(event)
+        service.events().delete(calendarId='primary', eventId=recurring_id).execute()
+
+    except Exception as e:
+        print(f'Error: {e}')
+
+def updateRecurringEvent(event_id, new_description, new_duration, new_location, new_frequency, new_until):
+    service = get_google_calendar_service()
+
+    try:
+        new_description = new_description.strip('"')
+        new_duration = new_duration.strip('"')
+        new_frequency = new_frequency.strip('"')
+        new_until = new_until.strip('"')
+        if '-' in new_until:
+            new_until = new_until.replace('-','')
+
+        event_id = event_id.strip('"')
+        if '_' in event_id:
+            recurring_id, id = event_id.split('_')
+        event = service.events().get(calendarId='primary', eventId=recurring_id).execute()
+        print(recurring_id)
+        if new_description != "":
+            event['description'] = new_description
+
+        if new_duration:
+            hours, minutes = map(int, new_duration.split(':'))
+            new_duration_minutes = hours * 60 + minutes
+            # Get the current start time of the event
+            start_time = datetime.fromisoformat(event['start'].get('dateTime'))
+            # Calculate the new end time based on the start time and new duration
+            new_end_time = start_time + timedelta(minutes=new_duration_minutes)
+
+            # Update the event's end time
+            event['end'] = {'dateTime': new_end_time.isoformat(), 'timeZone': 'UTC'}
+
+        if new_location != "" or new_location != '':
+            event['location'] = new_location
+
+        if new_frequency != "" or new_frequency != '' or new_until != "" or new_until != '':
+            recurrence = event['recurrence']
+            print(event)
+            print(recurrence)
+            if recurrence:
+                existing_rule = recurrence[0]  # Assuming there's only one rule
+                rule_parts = existing_rule.split(';')
+                print(rule_parts)
+            else:
+                print("Error: Event is not recurring.")
+                return
+            # Update the recurrence rule with new frequency and/or new "until" date
+            if new_frequency != "" or new_frequency != '':
+                rule_parts[0] = 'FREQ=' + new_frequency.upper()
+            if new_until != "" or new_until != '':
+                rule_parts[1] = 'UNTIL=' + new_until
+
+            # Construct the modified recurrence rule
+            updated_rule = ';'.join(rule_parts)
+            full_rule = "RRULE:" + updated_rule
+            # Update the event with the modified recurrence rule
+            event['recurrence'] = [full_rule]
+
+        print(event)
+        updated_event = service.events().update(calendarId='primary', eventId=recurring_id, body=event).execute()
+        print('updated event: ', updated_event)
+
+    except Exception as e:
+        print(f'Error: {e}')
+
+def inviteEmail(event_id, attendees):
+    # Parse the start time string into a datetime object
+    service = get_google_calendar_service()
+    event = service.events().get(calendarId='primary', eventId=event_id).execute()
+
+    attendees = attendees.strip('"')
+    # attendees_list = []
+    # attendees = attendees.strip('"')
+    # if type(attendees) != list:
+    #     attendees_list.append(attendees)
+    # else:
+    #     attendees_list = attendees
+
+
+    event['attendees'] = [{'email': attendees}]
+    event['reminders'] = {
+            'useDefault': False,
+            'overrides': [
+                {'method': 'email', 'minutes': 24 * 60},
+                {'method': 'popup', 'minutes': 10}
+            ]
+    }
+
+    print(event)
+
+    # Create and send the event invite
+    event = service.events().update(calendarId='primary',eventId=event_id, body=event).execute()
+    print(f"Meeting invite sent: {event.get('htmlLink')}")
 
 def checkSchedule(type, start, end):
     service = get_google_calendar_service()
