@@ -1,0 +1,17 @@
+Query,Output,explanation_critique_tone,score_valid_response,score_response_conciseness,score_response_completenes,score_factual_accuracy
+"Schedule a brainstorming session for Monday, April 22, 2024, at 9:00 AM EST for 1 hour","createEvent(""Brainstorming Session"", ""2024-04-22"", ""09:00"", ""1:00"")",1,1,0,0,0.2
+"Set up a project review for Wednesday, April 24, 2024, at 2:30 PM EST for 1 hour","createEvent(""Project Review"", ""2024-04-24"", ""14:30"", ""1:00"")",1,1,0,0.5,0
+"Arrange a client presentation for Thursday, April 25, 2024, at 10:00 AM EST for 1 hour","createEvent(""Client Presentation"", ""2024-04-25"", ""11:30"", ""1:00"")",0.5,1,0,0,0.2
+"Organize a training session for Friday, April 26, 2024, at 1:00 PM EST for 1 hour","createEvent(""Organize a training session"", ""2024-04-26"", ""13:00"", ""1:00"")",1,1,0,0,0.2
+"Set up a product demo for Thursday, April 25, 2024, at 2:00 PM EST for 1 hour","createEvent(""Product Demo"", ""2024-04-25"", ""14:00"", ""1:00"")",1,1,0,1,0
+"Update the color of the brainstorming session to tomato scheduled for Monday, April 22, 2024, at 9:00 AM EST.","updateEvent(""event_id"", ""tomato"", """", """")",0.5,1,0,0.5,0
+"Update the time of the team lunch planned for Tuesday, April 23, 2024, at noon EST to 1:00 PM EST.","moveEvent(""event_id"", ""2024-04-23"", ""13:00"")",1,1,0,0,0.2
+"Set up a weekly team meeting starting next Monday, April 22, 2024, at 10:00 AM EST for 1 hour for a year","createRecurringEvent(""Weekly Team Meeting"", ""2024-04-23"", ""10:00"", ""1:00"", ""WEEKLY"", ""2025-04-14"")",0.5,1,0,0,0.2
+"Create a monthly team briefing starting next thursday, April 25, 2024, at 4:00 PM EST for a year.","createRecurringEvent(""Monthly Team Briefing"", ""2024-04-25"", ""16:00"", ""1:00"", ""MONTHLY"", ""2025-04-17"")",1,1,0,1,0
+"Create a weekly project review starting next Wednesday, April 24, 2024, at 4:00 PM EST for a year.","createRecurringEvent(""Weekly Project Review"", ""2024-04-24"", ""16:00"", ""1:00"", ""WEEKLY"", ""2025-04-17"")",0.5,1,0,0,0
+"Cancel the weekly project review set for every Wednesday, starting on April 24, 2024, at 2:30 PM EST.","deleteRecurringEvent(""event_id"")",1,1,0,0.5,0.2
+"Delete the team lunch planned for Tuesday, April 23, 2024, at noon EST.","deleteEvent(""event_id"")",1,1,0,1,0
+"Delete the brainstorming session scheduled for Monday, April 22, 2024, at 9:00 AM EST.","deleteEvent(""event_id"")",0.5,1,0,1,0.2
+"Move my client meeting on Friday, April 26, 2024, at 10:00 AM EST to the same day at 2:00 PM EST.","moveEvent(""event_id"", ""2024-04-26"", ""14:00"")",1,1,0,0.5,0.2
+"Reschedule the workshop from Tuesday, April 23, 2024, at 10:00 AM EST to Wednesday, April 17, 2024, at 11:00 AM EST.","moveEvent(""event_id"", ""2024-04-24"", ""11:00"")",0.5,1,0,0.5,0.2
+"Move the product demo set for Thursday, April 25, 2024, at 2:00 PM EST to the same day at 4:00 PM EST.","moveEvent(""event_id"", ""2024-04-25"", ""16:00"")",0.5,1,0,0,0
