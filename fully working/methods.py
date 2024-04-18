@@ -129,9 +129,9 @@ def get_tasks():
 
 
 def set_up_ChatGPT(calendar, tasks):
-    os.environ["OPENAI_API_KEY"] = "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"
+    os.environ["OPENAI_API_KEY"] = "sk-proj-M2EcGrSkZptaGi5rj6bRT3BlbkFJrzBwj1fX1qILTOrn9sDp"
     client = OpenAI()
-    client.api_key = "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"
+    client.api_key = "sk-proj-M2EcGrSkZptaGi5rj6bRT3BlbkFJrzBwj1fX1qILTOrn9sDp"
 
     stream = client.chat.completions.create(
         model="gpt-3.5-turbo",
@@ -192,22 +192,7 @@ def moveEvent(event_id, new_date, new_time):
 
     service = get_google_calendar_service()
     try:
-        # Parse current datetime
 
-        # if new_date and new_time:
-        #     current_datetime = datetime.strptime(f'{new_date} {new_time}', '%Y-%m-%d %I:%M %p')
-        # elif new_time:
-        #     current_datetime = datetime.now().replace(hour=int(new_time.split(':')[0]))
-        # elif new_date:
-        #     current_datetime = datetime.strptime(new_date, '%Y-%m-%d').replace(hour=0, minute=0, second=0)
-
-        # Check if new datetime is in the future
-        # if new_datetime < datetime.now():
-        #     raise ValueError('The new date and time should be in the future.')
-
-        # Retrieve event from Google Calendar
-
-        # Retrieve event from Google Calendar
 
         event_id = event_id.strip('"')
         new_date = new_date.strip('"')
@@ -228,58 +213,37 @@ def moveEvent(event_id, new_date, new_time):
         duration = (datetime.strptime(event['end']['dateTime'], "%Y-%m-%dT%H:%M:%S%z") -
                                                     datetime.strptime(event['start']['dateTime'], "%Y-%m-%dT%H:%M:%S%z"))
 
-        print('duration: ', duration)
-        utc_end_datetime = utc_start_datetime + duration
 
-        print("UTC start time: ", utc_start_datetime, "UTC end time: ", utc_end_datetime)
+        utc_end_datetime = utc_start_datetime + duration
 
         # Convert the datetime back to RFC3339 format for the Google Calendar API call
         start_iso = utc_start_datetime.isoformat()
         end_iso = utc_end_datetime.isoformat()
 
 
-       # Parse new datetime
-        # new_datetime = datetime.strptime(new_date + " " + new_time, "%Y-%m-%d %H:%M")
-
-        # # Get timezone
-        # print('new datetime reg: ', new_datetime)
-        # print('event timezone: ', event['start']['timeZone'])
-        # event_timezone = pytz.timezone(event['start']['timeZone'])
-        # print('timezone: ', event_timezone)
-
-        # # Convert new datetime to event timezone
-        # new_datetime = event_timezone.localize(new_datetime)
-        # new_datetime_utc = new_datetime.astimezone(pytz.utc)
-        # print('new datetime utc: ', new_datetime_utc)
-        # # Update event start and end time
-        # duration = (datetime.strptime(event['end']['dateTime'], "%Y-%m-%dT%H:%M:%S%z") -
-        #                                             datetime.strptime(event['start']['dateTime'], "%Y-%m-%dT%H:%M:%S%z"))
-
-        # event['start']['dateTime'] = new_datetime_utc.isoformat()
-        # event['end']['dateTime'] = (new_datetime_utc + duration).isoformat()
-
         event['start']['dateTime'] = start_iso
         event['end']['dateTime'] = end_iso
 
+        name = event['summary']
 
         # Update event in Google Calendar
         updated_event = service.events().update(calendarId='primary', eventId=event_id, body=event).execute()
         #print('Event updated: %s' % updated_event.get('htmlLink'))
 
-        print(f'Event "{event}" moved to {datetime.fromisoformat(updated_event["start"]["dateTime"])}')
+        print(f'Event {name} moved to {datetime.fromisoformat(updated_event["start"]["dateTime"])}')
     except Exception as e:
         print(f'Error: {e}')
 
 
 
 def createEvent(description, date, time, duration):
-    print("Create event called")
+
 
     # Adjust date parsing to match incoming data
     description = description.strip('"')
     date = date.strip('"')
     time = time.strip('"')
-    print("The data and time is ", date, "/", time)
+
 
     # Adjust the datetime parsing to match the incoming data
     naive_start_datetime = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
@@ -294,7 +258,6 @@ def createEvent(description, date, time, duration):
     duration_minutes = hours * 60 + minutes
     utc_end_datetime = utc_start_datetime + timedelta(minutes=int(duration_minutes))
 
-    print("UTC start time: ", utc_start_datetime, "UTC end time: ", utc_end_datetime)
 
     # Convert the datetime back to RFC3339 format for the Google Calendar API call
     start_iso = utc_start_datetime.isoformat()
@@ -321,12 +284,15 @@ def updateEvent(event_id, new_description, new_duration, new_location):
 
     try:
         event_id = event_id.strip('"')
+        new_description = new_description.strip('"')
+        new_duration = new_duration.strip('"')
+        new_location = new_location.strip('"')
 
 
         event = service.events().get(calendarId='primary', eventId=event_id).execute()
         print(event_id)
         if new_description != '' or new_description != "":
-            event['description'] = new_description
+            event['summary'] = new_description
 
         if new_duration:
             hours, minutes = map(int, new_duration.split(':'))
@@ -344,7 +310,9 @@ def updateEvent(event_id, new_description, new_duration, new_location):
             event['location'] = new_location
 
         updated_event = service.events().update(calendarId='primary', eventId=event_id, body=event).execute()
-        print("updated event: ", updated_event)
+        print(
+        f"Event updated: {new_description} for duration of {new_duration} hours at {new_location}."
+        )
     except Exception as e:
         print(f'Error: {e}')
 
@@ -355,19 +323,23 @@ def deleteEvent(event_id):
     event_id = event_id.strip('"')
 
     try:
+        event = service.events().get(calendarId='primary', eventId=event_id).execute()
+        name = event['summary']
         service.events().delete(calendarId='primary', eventId=event_id).execute()
+        print(f"{name} deleted.")
     except Exception as e:
         print(f'Error: {e}')
 
 
 def createRecurringEvent(description, date, time, duration, frequency, until):
-    print("Create recurring event called")
+
 
     # Adjust date parsing to match incoming data
     description = description.strip('"')
     date = date.strip('"')
     time = time.strip('"')
     frequency = frequency.strip('"')
+    frequency = frequency.upper()
     duration = duration.strip('"')
     until = until.strip('"')
     if '-' in until:
@@ -407,8 +379,9 @@ def createRecurringEvent(description, date, time, duration, frequency, until):
 
     created_event = service.events().insert(calendarId="primary", body=event).execute()
     print(
-        f"Event created: {description} on {date} at {time} for duration of {duration} hours {frequency} until {until}."
+        f"Recurring event created: {description} on {date} at {time} for duration of {duration} hours {frequency} until {until}."
     )
+    #print(created_event)
 
 
 def deleteRecurringEvent(event_id):
@@ -420,9 +393,9 @@ def deleteRecurringEvent(event_id):
 
     try:
         event = service.events().get(calendarId='primary', eventId=recurring_id).execute()
-        print(event)
+        name = event['summary']
         service.events().delete(calendarId='primary', eventId=recurring_id).execute()
-
+        print(f"Recurring {name} deleted.")
     except Exception as e:
         print(f'Error: {e}')
 
@@ -433,17 +406,19 @@ def updateRecurringEvent(event_id, new_description, new_duration, new_location, 
         new_description = new_description.strip('"')
         new_duration = new_duration.strip('"')
         new_frequency = new_frequency.strip('"')
+        new_frequency = new_frequency.upper()
         new_until = new_until.strip('"')
         if '-' in new_until:
             new_until = new_until.replace('-','')
 
         event_id = event_id.strip('"')
+        recurring_id = event_id
         if '_' in event_id:
             recurring_id, id = event_id.split('_')
         event = service.events().get(calendarId='primary', eventId=recurring_id).execute()
-        print(recurring_id)
+
         if new_description != "":
-            event['description'] = new_description
+            event['summary'] = new_description
 
         if new_duration:
             hours, minutes = map(int, new_duration.split(':'))
@@ -461,12 +436,9 @@ def updateRecurringEvent(event_id, new_description, new_duration, new_location, 
 
         if new_frequency != "" or new_frequency != '' or new_until != "" or new_until != '':
             recurrence = event['recurrence']
-            print(event)
-            print(recurrence)
             if recurrence:
                 existing_rule = recurrence[0]  # Assuming there's only one rule
                 rule_parts = existing_rule.split(';')
-                print(rule_parts)
             else:
                 print("Error: Event is not recurring.")
                 return
@@ -482,12 +454,66 @@ def updateRecurringEvent(event_id, new_description, new_duration, new_location, 
             # Update the event with the modified recurrence rule
             event['recurrence'] = [full_rule]
 
-        print(event)
-        updated_event = service.events().update(calendarId='primary', eventId=recurring_id, body=event).execute()
-        print('updated event: ', updated_event)
 
+        updated_event = service.events().update(calendarId='primary', eventId=recurring_id, body=event).execute()
+
+        print(
+        f"Recurring event updated: {updated_event['summary']} for duration of {new_duration} hours at {new_location}."
+        )
     except Exception as e:
         print(f'Error: {e}')
+
+
+def moveRecurringEvent(event_id, new_date, new_time):
+
+    service = get_google_calendar_service()
+    try:
+
+
+        event_id = event_id.strip('"')
+        new_date = new_date.strip('"')
+        new_time = new_time.strip('"')
+
+        event_id = event_id.strip('"')
+        recurring_id = event_id
+        if '_' in event_id:
+            recurring_id, id = event_id.split('_')
+        event = service.events().get(calendarId='primary', eventId=recurring_id).execute()
+
+        # Adjust the datetime parsing to match the incoming data
+        naive_start_datetime = datetime.strptime(f"{new_date} {new_time}", "%Y-%m-%d %H:%M")
+
+        # Assuming input time is in the local timezone
+        local_timezone = pytz.timezone('America/New_York')
+        local_start_datetime = local_timezone.localize(naive_start_datetime)
+
+        # Convert local time to UTC (Zulu Time)
+        utc_start_datetime = local_start_datetime.astimezone(pytz.utc)
+        duration = (datetime.strptime(event['end']['dateTime'], "%Y-%m-%dT%H:%M:%S%z") -
+                                                    datetime.strptime(event['start']['dateTime'], "%Y-%m-%dT%H:%M:%S%z"))
+
+
+        utc_end_datetime = utc_start_datetime + duration
+
+        # Convert the datetime back to RFC3339 format for the Google Calendar API call
+        start_iso = utc_start_datetime.isoformat()
+        end_iso = utc_end_datetime.isoformat()
+
+
+        event['start']['dateTime'] = start_iso
+        event['end']['dateTime'] = end_iso
+
+        name = event['summary']
+
+
+        # Update event in Google Calendar
+        updated_event = service.events().update(calendarId='primary', eventId=event_id, body=event).execute()
+        #print('Event updated: %s' % updated_event.get('htmlLink'))
+
+        print(f'Recurring event {name} moved to {datetime.fromisoformat(updated_event["start"]["dateTime"])}')
+    except Exception as e:
+        print(f'Error: {e}')
+
 
 def inviteEmail(event_id, attendees):
     # Parse the start time string into a datetime object
@@ -512,69 +538,69 @@ def inviteEmail(event_id, attendees):
             ]
     }
 
-    print(event)
+
 
     # Create and send the event invite
     event = service.events().update(calendarId='primary',eventId=event_id, body=event).execute()
     print(f"Meeting invite sent: {event.get('htmlLink')}")
 
-def checkSchedule(type, start, end):
-    service = get_google_calendar_service()
-    now = datetime.now().isoformat()
-    nextweek = (datetime.now() + timedelta(days=7)).isoformat()
-    time_min = datetime.strptime(start, "%Y-%m-%d %H:%M")
-    time_max = datetime.strptime(end, "%Y-%m-%d %H:%M")
-    start_datetime = datetime.strptime(start, "%Y-%m-%d %H:%M").replace(
-        tzinfo=timezone.utc
-    )
-    end_datetime = datetime.strptime(end, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+# def checkSchedule(type, start, end):
+#     service = get_google_calendar_service()
+#     now = datetime.now().isoformat()
+#     nextweek = (datetime.now() + timedelta(days=7)).isoformat()
+#     time_min = datetime.strptime(start, "%Y-%m-%d %H:%M")
+#     time_max = datetime.strptime(end, "%Y-%m-%d %H:%M")
+#     start_datetime = datetime.strptime(start, "%Y-%m-%d %H:%M").replace(
+#         tzinfo=timezone.utc
+#     )
+#     end_datetime = datetime.strptime(end, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
 
-    if type == "Free":
-        events_result = (
-            service.freebusy()
-            .query(
-                body={
-                    "timeMin": time_min.isoformat() + "Z",
-                    "timeMax": time_max.isoformat() + "Z",
-                    "items": [{"id": "primary"}],
-                }
-            )
-            .execute()
-        )
-        busy_periods = events_result["calendars"]["primary"]["busy"]
-        free_periods = []
-        last_end_time = start_datetime
+#     if type == "Free":
+#         events_result = (
+#             service.freebusy()
+#             .query(
+#                 body={
+#                     "timeMin": time_min.isoformat() + "Z",
+#                     "timeMax": time_max.isoformat() + "Z",
+#                     "items": [{"id": "primary"}],
+#                 }
+#             )
+#             .execute()
+#         )
+#         busy_periods = events_result["calendars"]["primary"]["busy"]
+#         free_periods = []
+#         last_end_time = start_datetime
 
-        for busy_period in busy_periods:
-            start_time = datetime.fromisoformat(busy_period["start"]).replace(
-                tzinfo=timezone.utc
-            )
-            end_time = datetime.fromisoformat(busy_period["end"]).replace(
-                tzinfo=timezone.utc
-            )
+#         for busy_period in busy_periods:
+#             start_time = datetime.fromisoformat(busy_period["start"]).replace(
+#                 tzinfo=timezone.utc
+#             )
+#             end_time = datetime.fromisoformat(busy_period["end"]).replace(
+#                 tzinfo=timezone.utc
+#             )
 
-            # Check if there is a gap between the last busy period and the current one
-            if last_end_time < start_time:
-                free_periods.append({"start": last_end_time, "end": start_time})
+#             # Check if there is a gap between the last busy period and the current one
+#             if last_end_time < start_time:
+#                 free_periods.append({"start": last_end_time, "end": start_time})
 
-            last_end_time = max(last_end_time, end_time)
+#             last_end_time = max(last_end_time, end_time)
 
-        # Check if there is a gap between the last busy period and the end of the specified time range
-        if last_end_time < end_datetime:
-            free_periods.append({"start": last_end_time, "end": end_datetime})
+#         # Check if there is a gap between the last busy period and the end of the specified time range
+#         if last_end_time < end_datetime:
+#             free_periods.append({"start": last_end_time, "end": end_datetime})
 
-        # Print the free periods
-        if not free_periods:
-            print("You are busy all day!")
-        else:
-            print("You are free in these time periods:")
-            for free_period in free_periods:
-                start_time = free_period["start"].strftime("%I:%M %p")
-                end_time = free_period["end"].strftime("%I:%M %p")
-                print(f"{start_time} to {end_time}")
-    else:
-        # The rest of your code for handling non-Free events
-        pass
+#         # Print the free periods
+#         if not free_periods:
+#             print("You are busy all day!")
+#         else:
+#             print("You are free in these time periods:")
+#             for free_period in free_periods:
+#                 start_time = free_period["start"].strftime("%I:%M %p")
+#                 end_time = free_period["end"].strftime("%I:%M %p")
+#                 print(f"{start_time} to {end_time}")
+#     else:
+#         # The rest of your code for handling non-Free events
+#         pass
 
 
 def current_time():
